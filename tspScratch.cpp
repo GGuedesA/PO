@@ -7,61 +7,14 @@
 #include <time.h> //time(NULL) usado apra inicializar a semente aleatoria
 
 int calculateTourDistance(int *tour); //calculo da qualidade da solucao (fitness)
-void tweak(int* tour, int i, int j); //modifica uma dada solucao (encontra uma solucao vizinha)
+void tweak(int *tour, int i, int j); //modifica uma dada solucao (encontra uma solucao vizinha)
 void readFile(const char *inputFile); //le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
+void greedySearch(int* tour );
+void simulatedAnnealing(int* tour );
 
 int **distanceMatrix, size=-1, pos=0;
 
-void greedySearch(int*tour) {
-	// Inicializa o tour com a primeira cidade.
-	tour[0] = 0;
 
-	// Para cada cidade que ainda não foi visitada:
-	for (int i = 1; i < size; i++) {
-		// Encontra a cidade mais próxima da cidade atual.
-		int closestCity = -1;
-		int minDistance = INT_MAX;
-		for (int j = 0; j < size; j++) {
-			if (tour[j] == -1 && distanceMatrix[tour[i - 1]][j] < minDistance) {
-				closestCity = j;
-				minDistance = distanceMatrix[tour[i - 1]][j];
-			}
-		}
-
-		// Adiciona a cidade mais próxima ao tour.
-		tour[i] = closestCity;
-	}
-	printf("Busca Gulosa: Tamanho %d\n", size);
-	int bestResult = calculateTourDistance(tour);
-	printf("Busca Gulosa: Melhor Resultado %d\n", bestResult);
-};
-
-void simulatedAnnealing(int*tour) {
-	// Inicializa a temperatura.
-	int temperature = 1000;
-	// Realiza iterações até que a temperatura chegue a zero
-	while (temperature > 0) {
-		// Gera uma solução vizinha.
-		int neighborTour[size];
-		memcpy(neighborTour, tour, size * sizeof(int));
-		int i = rand() % size;
-		int j = rand() % size;
-		tweak(neighborTour, i, j);
-		// Calcula a diferença de custo entre a solução atual e a solução vizinha.
-		int deltaCost = calculateTourDistance(neighborTour) - calculateTourDistance(tour);
-		// Aceita a solução vizinha com uma probabilidade de acordo com a temperatura.
-		if (deltaCost < 0) {
-			memcpy(tour, neighborTour, size * sizeof(int));
-		} else {
-			double probability = exp(-deltaCost / temperature);
-			if (rand() / (RAND_MAX + 1.0) < probability) {
-				memcpy(tour, neighborTour, size * sizeof(int));
-			}
-		}
-		// Reduz a temperatura.
-		temperature *= 0.9;
-	}
-};
 
 int main(const int argc, const char **inputFile){
     // if(argc != 2){ //verifica se foi passado o nome do arquivo (o primeiro argumento em C e o nome do executavel)
@@ -70,8 +23,8 @@ int main(const int argc, const char **inputFile){
 	// }else{
     //     readFile(inputFile[1]);
 	// }
-	readFile("tsp/eil51.tsp");//passa direto o nome do arquivo, ao inves de usar linha de comando
-
+	readFile("eil51.tsp");//passa direto o nome do arquivo, ao inves de usar linha de comando
+    
 //    Mostra a distanceMatrix
     for(int i=0; i<size; i++){
         for(int j=0; j<size; j++)
@@ -79,23 +32,32 @@ int main(const int argc, const char **inputFile){
         printf("\n");
     }
 
-//    Cria um tour percorrendo as cidades em ordem e mostra o tamanho desse tour
+//    Cria um tour percorrendo as cidades em ordem e mostra o tamanho desse tour    
 	int tour[size];
 	for(int i=0; i<size; i++)
 		tour[i]=i;
     printf("Tamanho %d\n", calculateTourDistance(tour));
 
-
+	
+    
+    printf("Tamanho antes da busca gulosa: %d\n", calculateTourDistance(tour));
+    
+    
 //Busca gulosa
     //Fazer uma busca gulosa partindo da cidade 0, depois da 1, depois da 2 ...
     //Salvar melhor resultado encontrado nessa etapa
 	greedySearch(tour);
+	printf("Tamanho depois da busca gulosa: %d\n", calculateTourDistance(tour));
+	
 
 
 // 	Simulated Annealing
     //Usar a melhor solução encontrada no estagio anterior como solucao inicial do Simulated Annealing
     //Implementar o Simulated annealing, com atencao ao detalhe de que aqui estamos tentando minimizar a distancia total, no algoritmo mostrado, estamos tentando maximizar a qualidade
-	simulatedAnnealing(tour);
+
+    simulatedAnnealing(tour);
+    printf("Melhor caminho encontrado: %d\n", calculateTourDistance(tour));
+
 
 }
 
@@ -103,13 +65,9 @@ void tweak(int *tour, int i, int j){
     //Implementar
     //Gerar dois numeros aleatorios entre 0 e o numero de cidades, garantir que esses dois numeros sejam diferentes, eles serao indices digamos x e y
     //Trocar os valores que estao na posicao x e y do vetor tour
-	// Copia o tour atual para a solução vizinha.
-	int neighborTour[size];
-	memcpy(neighborTour, tour, size * sizeof(int));
-	// Troca as cidades nas posições i e j.
-	int temp = neighborTour[i];
-	neighborTour[i] = neighborTour[j];
-	neighborTour[j] = temp;
+    int temp = tour[i];
+    tour[i] = tour[j];
+    tour[j] = temp;
 }
 
 
@@ -123,6 +81,98 @@ int calculateTourDistance(int *tour){ //calculo da qualidade da solucao (fitness
 	return dist;
 }
 
+void greedySearch(int *tour) {
+  // Melhor solução encontrada até o momento.
+  int bestDistance = INT_MAX;
+
+  // Para cada cidade como ponto de partida
+  for (int i = 0; i < size; i++) {
+    // Inicializar o tour com a cidade atual
+    for (int j = 0; j < size; j++) {
+      tour[j] = j;
+    }
+    tour[0] = i;
+
+    // Para cada cidade restante
+    for (int j = 1; j < size; j++) {
+      // Encontrar a cidade mais próxima da cidade atual
+      int closestCity = -1;
+      int minDistance = INT_MAX;
+      for (int k = 0; k < size; k++) {
+        if (tour[j - 1] != k) {
+          int distance = distanceMatrix[tour[j - 1]][k];
+          if (distance < minDistance) {
+            closestCity = k;
+            minDistance = distance;
+          }
+        }
+      }
+
+      // Adicionar a cidade mais próxima ao tour
+      tour[j] = closestCity;
+    }
+
+    // Atualizar a melhor solução encontrada
+    int distance = calculateTourDistance(tour);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      memcpy(tour, tour, size * sizeof(int));
+    }
+  }
+
+  // Imprimir a melhor solução encontrada
+  printf("Melhor solucao encontrada pelo algoritmo guloso: %d\n", bestDistance);
+}
+
+void simulatedAnnealing(int *tour) {
+  // Temperatura inicial.
+  int temperature = 10;
+
+  // Taxa de resfriamento.
+  double coolingRate = 0.9;
+
+  // Melhor solução encontrada até o momento.
+  int bestDistance = INT_MAX;
+
+  // Inicializar o tour com a melhor solução encontrada pelo algoritmo guloso
+  memcpy(tour, tour, size * sizeof(int));
+
+  // Loop principal do algoritmo.
+  while (temperature > 0) {
+    // Gera uma vizinhança.
+    tweak(tour, rand() % size, rand() % size);
+
+    // Calcula a diferença de energia.
+    int deltaEnergy = calculateTourDistance(tour) - calculateTourDistance(tour);
+
+    // Aceita a mudança com probabilidade.
+    if (deltaEnergy < 0) {
+      // A mudança é melhor, então sempre aceitamos.
+    } else {
+      // A mudança é pior, então aceitamos com probabilidade de e^(-deltaEnergy/temperature).
+      double probability = exp(-deltaEnergy / temperature);
+      if (rand() % 1000 < probability * 1000) {
+        // Aceitamos a mudança.
+      } else {
+        // Rejeitamos a mudança e restauramos o estado anterior.
+        memcpy(tour, tour, size * sizeof(int));
+      }
+    }
+
+    // Diminuir a temperatura.
+    temperature *= coolingRate;
+
+    // Atualizar a melhor solução encontrada
+    int distance = calculateTourDistance(tour);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      memcpy(tour, tour, size * sizeof(int));
+    }
+  }
+
+  // Imprimir a melhor solução encontrada
+  printf("Melhor solucao encontrada pelo algoritmo simulated annealing: %d\n", bestDistance);
+}
 void readFile(const char *inputFile){ //le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
 
     double *x, *y;
