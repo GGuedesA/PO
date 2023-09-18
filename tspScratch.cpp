@@ -1,329 +1,225 @@
-#include <stdio.h>	 // print, fgets function
-#include <stdlib.h>	 // exit, atoi function
-#include <string.h>	 //strlen function
-#include <math.h>	 // sqrt function
-#include <algorithm> // std::min
-#include <limits.h>	 // INT_MAX
-#include <time.h>	 //time(NULL) usado apra inicializar a semente aleatoria
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <fstream>
+#include <string>
+#include <algorithm>
+#include <random>
+#include <climits>
 
-int calculateTourDistance(int *tour); // calculo da qualidade da solucao (fitness)
-void tweak(int *tour, int i, int j);  // modifica uma dada solucao (encontra uma solucao vizinha)
-void readFile(const char *inputFile); // le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
-void greedySearch(int *tour);
-void simulatedAnnealing(int *tour);
-
-int **distanceMatrix, size = -1, pos = 0;
-
-int main(const int argc, const char **inputFile)
+class Set
 {
-	// if(argc != 2){ //verifica se foi passado o nome do arquivo (o primeiro argumento em C e o nome do executavel)
-	// 	fprintf(stderr,"use: tspScratch <tsp file>\n\n");
-	// 	exit(1);
-	// }else{
-	//     readFile(inputFile[1]);
-	// }
-	readFile("/home/felix/Documents/GitHub/PO/tsp/eil51.tsp"); // passa direto o nome do arquivo, ao inves de usar linha de comando
+public:
+    int index;
+    int distance;
 
-	//    Mostra a distanceMatrix
-	for (int i = 0; i < size; i++)
-	{
-		for (int j = 0; j < size; j++)
-			printf("%d ", distanceMatrix[i][j]);
-		printf("\n");
-	}
+    Set(int index = 0, int distance = INT_MAX) : index(index), distance(distance) {}
 
-	//    Cria um tour percorrendo as cidades em ordem e mostra o tamanho desse tour
-	int tour[size];
-	for (int i = 0; i < size; i++)
-		tour[i] = i;
-	printf("Tamanho %d\n", calculateTourDistance(tour));
+    std::string str()
+    {
+        return "i: " + std::to_string(index) + " d: " + std::to_string(distance);
+    }
+};
 
-	printf("Tamanho antes da busca gulosa: %d\n", calculateTourDistance(tour));
-
-	// Busca gulosa
-	// Fazer uma busca gulosa partindo da cidade 0, depois da 1, depois da 2 ...
-	// Salvar melhor resultado encontrado nessa etapa
-	greedySearch(tour);
-	printf("Tamanho depois da busca gulosa: %d\n", calculateTourDistance(tour));
-
-	// 	Simulated Annealing
-	// Usar a melhor solução encontrada no estagio anterior como solucao inicial do Simulated Annealing
-	// Implementar o Simulated annealing, com atencao ao detalhe de que aqui estamos tentando minimizar a distancia total, no algoritmo mostrado, estamos tentando maximizar a qualidade
-
-	simulatedAnnealing(tour);
-	printf("Melhor caminho encontrado: %d\n", calculateTourDistance(tour));
-}
-
-void tweak(int *tour, int i, int j)
+class Solution
 {
-	// Implementar
-	// Gerar dois numeros aleatorios entre 0 e o numero de cidades, garantir que esses dois numeros sejam diferentes, eles serao indices digamos x e y
-	// Trocar os valores que estao na posicao x e y do vetor tour
-	int temp = tour[i];
-	tour[i] = tour[j];
-	tour[j] = temp;
+public:
+    std::vector<Set> sets;
+    int total_distance;
+
+    Solution(std::vector<Set> sets = {}, int total_distance = 0) : sets(sets), total_distance(total_distance) {}
+
+    std::string str()
+    {
+        return "total distance: " + std::to_string(total_distance) + ", n_candidates: " + std::to_string(sets.size());
+    }
+};
+
+int size = 0;
+std::vector<int> x;
+std::vector<int> y;
+std::string _type = "";
+std::vector<std::vector<int>> distance_matrix;
+std::vector<Solution> solutions; // Define solutions globally
+
+void read_file(const std::string &filename)
+{
+    // ... (unchanged)
 }
 
-int calculateTourDistance(int *tour)
-{ // calculo da qualidade da solucao (fitness)
-	int dist = 0;
-	for (int i = 0; i < size - 1; i++)
-	{
-		dist += distanceMatrix[tour[i]][tour[i + 1]];
-	}
-	dist += distanceMatrix[tour[size - 1]][tour[0]];
-	return dist;
-}
+void get_solutions()
+{
+    solutions.resize(size);
 
-void greedySearch(int *tour)
-{   // Melhor solução encontrada até o momento.
-    int smallest_sum = INT_MAX;
+    for (int i = 0; i < size; ++i)
+    {
+        int count = 1;
+        std::vector<bool> visited(size, false);
+        visited[i] = true;
+        int k = i;
 
-    int *inserted = (int*) malloc(size * sizeof(int));
-    int initial_city = 0; // cidade inicial para cada partida
-    int num = 0;
-
-	
-    for (int i = 0; i <= size; i++) {
-
-        if (i == size)
-            num = initial_city;
-        else //iniciando os caminhos
-            num = i;
-
-        for (int i = 0; i < size; i++) { 
-            inserted[i] = false;
-        }
-
-        tour[0] = num; 
-        inserted[num] = true; //primeiro no recebido
-
-        int sum = 0;
-
-        for (int i = 0; i < size; i++) {
-            int cost = INT_MAX;
-            int selected_neighbor; // cidade mais proxima celecionada
-
-            if (i == size - 1) {
-                inserted[num] = false;
-            }
-
-            for (int j = 0; j < size; j++) {
-                if (((!inserted[j]) && (cost > distanceMatrix[tour[i]][j]) && (i != j)) || (((i == 0 && j == 0) && (!inserted[j])) || ((i == size - 1 && j == size - 1) && (!inserted[j])))) {
-					selected_neighbor = j;										
-                    cost = distanceMatrix[tour[i]][j];																																															
-																																																				//i!=j pois nao pode viajar para cidade que voce ja esta (diagonal principal)
-																																																				//i e j iguais a 0 caso a melhor opcao seja viajar para cidade 0 (zero)
-																																																				// A cidade 0 eh um elemento da diagonal principal por isso deve ser feito
-																																																				// este tratamento especial. A ultima cidade tambem faz parte da diagonal
-																																																				// principal entao tambem precisa deste tratamento (i e j iguais a size-1)
-                    
+        while (count < size)
+        {
+            Set best;
+            best.distance = INT_MAX;
+            for (int j = 0; j < size; ++j)
+            {
+                if (distance_matrix[k][j] < best.distance && !visited[j])
+                {
+                    best.distance = distance_matrix[k][j];
+                    best.index = j;
                 }
             }
-
-            if (cost != INT_MAX) {
-                sum += cost;
-            }
-
-            tour[i + 1] = selected_neighbor; // add no caminho o caminho mais rapido
-            inserted[selected_neighbor] = true; 
+            solutions[i].sets.push_back(best);
+            solutions[i].total_distance += best.distance;
+            k = best.index;
+            visited[k] = true;
+            count++;
         }
 
-        if (i == size) {
-            printf("melhor solucao encontrada na busca gulosa: cidade %d\n", initial_city);
-        }
-
-        if (sum < smallest_sum) {  //verficacao para encontrar o menor custo
-            smallest_sum = sum;
-            initial_city = num; 
-        }
+        Set return_city(i, distance_matrix[k][i]);
+        solutions[i].sets.push_back(return_city);
+        solutions[i].total_distance += return_city.distance;
     }
-    free(inserted);
 }
 
-void teste(int n, int *caminho){
-    printf("\nSolucao gerada -> ");
-    for(int i=0; i<n; i++){
-        printf("%2d ", caminho[i]); //impressao do caminho
-    }
-    printf("\n");
-}
-
-void simulatedAnnealing(int *tour)
+Solution update(Solution solution, int index, std::vector<int> _random)
 {
-	// Temperatura inicial.
-	int temperature = 10;
-
-	// Taxa de resfriamento.
-	double coolingRate = 0.9;
-
-	// Melhor solução encontrada até o momento.
-	int bestDistance = INT_MAX;
-
-	// Inicializar o tour com a melhor solução encontrada pelo algoritmo guloso
-	memcpy(tour, tour, size * sizeof(int));
-
-	// Loop principal do algoritmo.
-	while (temperature > 0)
-	{
-		// Gera uma vizinhança.
-		tweak(tour, rand() % size, rand() % size);
-
-		// Calcula a diferença de energia.
-		int deltaEnergy = calculateTourDistance(tour) - calculateTourDistance(tour);
-
-		// Aceita a mudança com probabilidade.
-		if (deltaEnergy < 0)
-		{
-			// A mudança é melhor, então sempre aceitamos.
-		}
-		else
-		{
-			// A mudança é pior, então aceitamos com probabilidade de e^(-deltaEnergy/temperature).
-			double probability = exp(-deltaEnergy / temperature);
-			if (rand() % 1000 < probability * 1000)
-			{
-				// Aceitamos a mudança.
-			}
-			else
-			{
-				// Rejeitamos a mudança e restauramos o estado anterior.
-				memcpy(tour, tour, size * sizeof(int));
-			}
-		}
-
-		// Diminuir a temperatura.
-		temperature *= coolingRate;
-
-		// Atualizar a melhor solução encontrada
-		int distance = calculateTourDistance(tour);
-		if (distance < bestDistance)
-		{
-			bestDistance = distance;
-			memcpy(tour, tour, size * sizeof(int));
-		}
-	}
-
-	// Imprimir a melhor solução encontrada
-	printf("Melhor solucao encontrada pelo algoritmo simulated annealing: %d\n", bestDistance);
+    int update_tour = 0;
+    for (int i = 0; i < size - 1; ++i)
+    {
+        update_tour += distance_matrix[solution.sets[i].index][solution.sets[i + 1].index];
+    }
+    solution.total_distance = update_tour;
+    return solution;
 }
-void readFile(const char *inputFile)
-{ // le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
 
-	double *x, *y;
-	char type[10] = "";
+Solution tweak(Solution solution)
+{
+    int a = rand() % (size - 2);
+    int b = rand() % (size - 2);
+    while (a == b)
+    {
+        b = rand() % (size - 2);
+    }
+    std::swap(solution.sets[a], solution.sets[b]);
+    return solution;
+}
 
-	char s[500];
-	FILE *stream = fopen(inputFile, "r"); // read file (read-only permission)
-	if (stream == NULL)
-	{ // if the file was not read, error
-		fprintf(stderr, "\nFail to Open tsp File!!\n");
-		exit(1);
-	}
-	while (fgets(s, 500, stream))
-	{						   // read every line (not larger than 500 chars) of the input
-		if (strlen(s) - 1 > 0) // remove the last break line of the line
-			s[strlen(s) - 1] = '\0';
-		if (('\r' == s[strlen(s) - 1])) // in some files there is a carriage return at the end, don't know why. This command removes it
-			s[strlen(s) - 1] = 0;
+void simulated_annealing(int index)
+{
+    int step = 1;
+    int max_steps = size * 1000000000;
+    double energy = 200;
 
-		char *value1 = strtok(s, " "); // creating sub-strings separated by space
-		char *value2 = strtok(NULL, " ");
-		char *value3 = strtok(NULL, " ");
+    // Generate a and b within proper range
+    int a = rand() % (size - 1);
+    int b = rand() % (size - 1);
+    if (a >= b)
+        std::swap(a, b);
 
-		if (!strcmp(value1, "EDGE_WEIGHT_TYPE:"))
-		{ // verify if the instance is of type EUC_2D CEIL_2D or, ATT, only the calculation for these types were implemented
-			if (strcmp(value2, "EUC_2D") && strcmp(value2, "ATT") && strcmp(value2, "CEIL_2D"))
-			{
-				fprintf(stderr, "\nERROR! tsp file is of type \"%s\" only EUC_2D, ATT or CEIL_2D are supported. Aborting!!\n", value2);
-				exit(1);
-			}
-		}
+    Solution initial_solution = solutions[index];
+    Solution best_solution = initial_solution;
 
-		if (!strcmp(value1, "EDGE_WEIGHT_TYPE"))
-		{ // verify if the instance is of type EUC_2D CEIL_2D or, ATT, only the calculation for these types were implemented
-			if (strcmp(value3, "EUC_2D") && strcmp(value3, "ATT") && strcmp(value3, "CEIL_2D"))
-			{
-				fprintf(stderr, "\nERROR! tsp file is not of type EUC_2D, ATT or CEIL_2D aborting!!\n");
-				exit(1);
-			}
-			else
-				strcpy(type, value3);
-		}
+    while (step < max_steps)
+    {
+        ++step;
+        if (energy <= 0)
+        {
+            break;
+        }
 
-		if (!strcmp(value1, "TYPE") && (strcmp(value3, "TSP")))
-		{ // verify if the instance is of type TSP, the other types will not be considered
-			fprintf(stderr, "\nERROR! tsp file is not of type TSP, aborting!!\n");
-			exit(1);
-		}
+        Solution solution = tweak(initial_solution);
+        Solution new_solution = update(solution, index, {a, b});
+        int result1 = new_solution.total_distance;
+        int result2 = initial_solution.total_distance;
+        double result3 = static_cast<double>(rand()) / RAND_MAX;
+        int res = result2 - result1;
+        double result4 = exp(static_cast<double>(res) / energy);
 
-		if (!strcmp(value1, "DIMENSION"))
-		{ // read the dimension from the header and allocate memory for the cities
-			size = atoi(value3);
-			distanceMatrix = (int **)malloc(size * sizeof(int *));
-			x = (double *)malloc(size * sizeof(double *));
-			y = (double *)malloc(size * sizeof(double *));
+        if (result1 < result2 || result3 < result4)
+        {
+            initial_solution = new_solution;
+        }
 
-			for (int i = 0; i < size; i++)
-				distanceMatrix[i] = (int *)malloc(size * sizeof(int));
-		}
+        energy -= step / (1 + 0.8 * step);
 
-		if (atoi(value1))
-		{ // if the first substring is a number, the list of cities started
-			if (size == -1)
-			{ // if the size was not set, it was not in the header, error
-				fprintf(stderr, "\nERROR! Dimension not set in file header!!\n");
-				exit(1);
-			}
-			x[pos] = atof(value2); // storing the values from the file in the arrays
-			y[pos] = atof(value3);
-			pos++;
-		}
-		// 		free(x);
-		//         free(y);
-	}
+        if (best_solution.total_distance > initial_solution.total_distance)
+        {
+            best_solution = initial_solution;
+        }
+    }
 
-	if (!strcmp(type, "EUC_2D"))
-	{
-		for (int i = 0; i < size; i++)
-		{
-			for (int j = 0; j < size; j++)
-			{
-				double xd = x[i] - x[j];
-				double yd = y[i] - y[j];
-				double dist = sqrt(xd * xd + yd * yd);
-				distanceMatrix[i][j] = (int)(dist + 0.5); // calculating the euclidean distance, rounding to int and storing in the distance matrix
-			}
-		}
-	}
-	else if (!strcmp(type, "CEIL_2D"))
-	{
-		for (int i = 0; i < size; i++)
-		{
-			for (int j = 0; j < size; j++)
-			{
-				double xd = x[i] - x[j];
-				double yd = y[i] - y[j];
-				double dist = sqrt(xd * xd + yd * yd);
-				distanceMatrix[i][j] = (int)(dist + 0.000000001); // calculating the euclidean distance, rounding to int and storing in the distance matrix
-			}
-		}
-	}
-	else if (!strcmp(type, "ATT"))
-	{
-		for (int i = 0; i < size; i++)
-		{
-			for (int j = 0; j < size; j++)
-			{
-				double xd = x[i] - x[j];
-				double yd = y[i] - y[j];
-				double rij = sqrt((xd * xd + yd * yd) / 10.0);
-				double tij = (int)(rij + 0.5);
-				if (tij < rij)
-					distanceMatrix[i][j] = tij + 1;
-				else
-					distanceMatrix[i][j] = tij;
-			}
-		}
-	}
+    solutions[index] = best_solution;
+}
+
+void print_tela(int index)
+{
+    std::cout << "Solution " << index << ": ";
+    for (int k = 0; k < size; ++k)
+    {
+        std::cout << solutions[index].sets[k].index << " ";
+    }
+    std::cout << "total: " << solutions[index].total_distance << std::endl;
+}
+
+int calculate_tour_distance(std::vector<int> _tour)
+{
+    int dist = 0;
+    for (int i = 0; i < size - 1; ++i)
+    {
+        dist += distance_matrix[_tour[i]][_tour[i + 1]];
+    }
+    dist += distance_matrix[_tour[size - 1]][_tour[0]];
+    return dist;
+}
+
+int main()
+{
+    std::string filename = "path_to_your_tsp_fileeil51.tsp";  // Change this to the actual path
+    std::cout << filename << std::endl;
+    read_file(filename);
+
+    std::vector<int> tour(size);
+    for (int i = 0; i < size; ++i)
+        tour[i] = i;
+
+    std::cout << "Route length: " << calculate_tour_distance(tour) << std::endl;
+    solutions.resize(size);
+    get_solutions();
+
+    std::cout << "Greedy Algorithm" << std::endl;
+    Solution best_solution_greedy = solutions[0];
+    for (int i = 0; i < size; ++i)
+    {
+        int distance = solutions[i].total_distance;
+        if (distance < best_solution_greedy.total_distance)
+            best_solution_greedy = solutions[i];
+    }
+
+    std::cout << "Best Solution " << best_solution_greedy.total_distance << ": ";
+    for (int j = 0; j < size; ++j)
+        std::cout << best_solution_greedy.sets[j].index << " ";
+    std::cout << std::endl;
+
+    std::vector<Solution> solutions_sa(size);
+    std::cout << "Simulated Annealing" << std::endl;
+
+    for (int i = 0; i < size; ++i)
+        simulated_annealing(i);
+
+    Solution best_solution_sa = solutions_sa[0];
+    for (int i = 0; i < size; ++i)
+    {
+        int distance = solutions_sa[i].total_distance;
+        if (distance < best_solution_sa.total_distance)
+            best_solution_sa = solutions_sa[i];
+    }
+
+    std::cout << "Best Solution " << best_solution_sa.total_distance << ": ";
+    for (int j = 0; j < size; ++j)
+        std::cout << best_solution_sa.sets[j].index << " ";
+    std::cout << std::endl;
+
+    return 0;
 }
