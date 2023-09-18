@@ -49,7 +49,6 @@ int main(const int argc, const char **inputFile)
 	// 	Simulated Annealing
 	// Usar a melhor solução encontrada no estagio anterior como solucao inicial do Simulated Annealing
 	// Implementar o Simulated annealing, com atencao ao detalhe de que aqui estamos tentando minimizar a distancia total, no algoritmo mostrado, estamos tentando maximizar a qualidade
-
 	simulatedAnnealing(tour);
 	printf("Melhor caminho encontrado: %d\n", calculateTourDistance(tour));
 }
@@ -111,12 +110,7 @@ void greedySearch(int *tour)
             for (int j = 0; j < size; j++) {
                 if (((!inserted[j]) && (cost > distanceMatrix[tour[i]][j]) && (i != j)) || (((i == 0 && j == 0) && (!inserted[j])) || ((i == size - 1 && j == size - 1) && (!inserted[j])))) {
 					selected_neighbor = j;										
-                    cost = distanceMatrix[tour[i]][j];																																															
-																																																				//i!=j pois nao pode viajar para cidade que voce ja esta (diagonal principal)
-																																																				//i e j iguais a 0 caso a melhor opcao seja viajar para cidade 0 (zero)
-																																																				// A cidade 0 eh um elemento da diagonal principal por isso deve ser feito
-																																																				// este tratamento especial. A ultima cidade tambem faz parte da diagonal
-																																																				// principal entao tambem precisa deste tratamento (i e j iguais a size-1)
+                    cost = distanceMatrix[tour[i]][j];										
                     
                 }
             }
@@ -136,6 +130,7 @@ void greedySearch(int *tour)
         if (sum < smallest_sum) {  //verficacao para encontrar o menor custo
             smallest_sum = sum;
             initial_city = num; 
+			
         }
     }
     free(inserted);
@@ -149,7 +144,7 @@ void teste(int n, int *caminho){
     printf("\n");
 }
 
-void simulatedAnnealing(int *tour)
+void simulatedAnnealingg(int *tour)
 {
 	// Temperatura inicial.
 	int temperature = 10;
@@ -159,9 +154,6 @@ void simulatedAnnealing(int *tour)
 
 	// Melhor solução encontrada até o momento.
 	int bestDistance = INT_MAX;
-
-	// Inicializar o tour com a melhor solução encontrada pelo algoritmo guloso
-	memcpy(tour, tour, size * sizeof(int));
 
 	// Loop principal do algoritmo.
 	while (temperature > 0)
@@ -207,6 +199,92 @@ void simulatedAnnealing(int *tour)
 	// Imprimir a melhor solução encontrada
 	printf("Melhor solucao encontrada pelo algoritmo simulated annealing: %d\n", bestDistance);
 }
+int path_length(int *caminho){
+    int length = 0;
+    for(int i=0 ; i<size ; i++){
+        length += distanceMatrix[caminho[i]][caminho[i+1]];
+    }
+
+    return length;
+}
+
+int tamanho_do_caminho(int *caminho){
+    int tamanho = 0;
+    for(int i=0 ; i<size ; i++){
+        tamanho += distanceMatrix[caminho[i]][caminho[i+1]]; //somando valores de distancia de cada cidade contando com o retorno para a cidade inicial
+    }
+
+    return tamanho;
+}
+void copia_caminho(int *caminho, int *copia){ //copiando o caminho para outro espaco alocado, auxilio para outros metodos
+    for(int i=0 ; i<size+1 ; i++){
+        copia[i] = caminho[i];
+    }
+}
+
+void simulatedAnnealing(int *tour) {
+	int *copy = (int*)malloc((size+1)* sizeof(int));
+	int *auxiliary = (int*)malloc((size+1)* sizeof(int));
+
+    float e = 2.7182; 
+    float t = 111;
+	copia_caminho(tour, copy);
+	copia_caminho(tour, auxiliary);
+
+    for (int i = 0; i <= 100000000; i++) { 
+        t = ((float)i * 100.00 / 100000000.00); 
+        int city_one = rand() % size + 1; 
+        int city_two = rand() % size + 1;
+
+        if (city_one == city_two || ((city_one == 0 && city_two == size) || (city_one == size && city_two == 0))) {
+            // If any of these situations occur, it means that two equal positions were drawn.
+            while (city_one == city_two || ((city_one == 0 && city_two == size) || (city_one == size && city_two == 0))) {
+                city_one = rand() % size + 1; // the draw is repeated until both are different, as specified in the while loop structure
+                city_two = rand() % size + 1;
+            }
+        }
+
+        if (city_one == 0) {
+            copy[size] = copy[city_two]; 
+        }
+        if (city_two == size) { 
+            copy[0] = copy[city_one]; 
+        }
+        if (city_one == size) {
+            copy[0] = copy[city_two];
+        }
+        if (city_two == 0) {
+            copy[size] = copy[city_one];
+        }
+
+        int aux = copy[city_one];
+        copy[city_one] = copy[city_two];
+        copy[city_two] = aux; 
+
+        float valueR = (float)path_length(copy);
+        float valueS = (float)path_length(auxiliary);;
+        float exponent = (valueS - valueR) / t;
+        float equation = pow(e, exponent);
+        float random_value = rand() % 2;
+
+        if ((valueR < valueS) || (random_value < equation)) {
+            memcpy(auxiliary, copy,  size * sizeof(int));
+        }
+        else {
+            memcpy(copy, auxiliary,   size * sizeof(int)); 
+        }
+        if (path_length(auxiliary) < path_length(tour)) {
+            memcpy(tour, auxiliary,  size * sizeof(int));
+        }
+    }
+	printf("\n\nTAMANHO TOTAL = %d\n", path_length(tour));
+}
+
+
+
+
+
+
 void readFile(const char *inputFile)
 { // le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
 
