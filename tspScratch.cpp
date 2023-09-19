@@ -169,62 +169,54 @@ void copia_caminho(int *tour, int *copia){ //copiando o caminho para outro espac
 }
 
 void simulatedAnnealing(int *tour) {
-    
-    int *copy = (int*)malloc((size+1)* sizeof(int));
-	int *auxiliary = (int*)malloc((size+1)* sizeof(int));
+    int *current_tour = (int *)malloc((size + 1) * sizeof(int));
+    int *best_tour = (int *)malloc((size + 1) * sizeof(int));
 
-    float e = 2.7182; 
-    float t = 111;
-	copia_caminho(tour, copy);
-	copia_caminho(tour, auxiliary);
+    memcpy(current_tour, tour, (size + 1) * sizeof(int));
+    memcpy(best_tour, tour, (size + 1) * sizeof(int));
 
-    for (int i = 0; i <= 100000000; i++) { 
-        t = ((float)i * 100.00 / 100000000.00); 
-        int city_one = rand() % size + 1; 
-        int city_two = rand() % size + 1;
+    float temperature = 100000;  // Initial temperature
+    float cooling_rate = 0.9999;  // Cooling rate
 
-        if (city_one == city_two || ((city_one == 0 && city_two == size) || (city_one == size && city_two == 0))) {
-            // If any of these situations occur, it means that two equal positions were drawn.
-            while (city_one == city_two || ((city_one == 0 && city_two == size) || (city_one == size && city_two == 0))) {
-                city_one = rand() % size + 1; // the draw is repeated until both are different, as specified in the while loop structure
-                city_two = rand() % size + 1;
-            }
+    while (temperature > 1.0) {
+        int city1 = rand() % size + 1;
+        int city2 = rand() % size + 1;
+
+        if (city1 == city2) {
+            continue;  // Skip if the cities are the same
         }
 
-        if (city_one == 0) {
-            copy[size] = copy[city_two]; 
-        }
-        if (city_two == size) { 
-            copy[0] = copy[city_one]; 
-        }
-        if (city_one == size) {
-            copy[0] = copy[city_two];
-        }
-        if (city_two == 0) {
-            copy[size] = copy[city_one];
+        // Swap the cities in the tour
+        int temp = current_tour[city1];
+        current_tour[city1] = current_tour[city2];
+        current_tour[city2] = temp;
+
+        int current_distance = path_length(current_tour);
+        int best_distance = path_length(best_tour);
+
+        // Calculate the change in distance
+        int delta_distance = current_distance - best_distance;
+
+        // If the new tour is better or with a probability, accept it
+        if (delta_distance < 0 || (rand() / (float)RAND_MAX) < exp(-delta_distance / temperature)) {
+            memcpy(best_tour, current_tour, (size + 1) * sizeof(int));
+        } else {
+            // Revert the swap
+            temp = current_tour[city1];
+            current_tour[city1] = current_tour[city2];
+            current_tour[city2] = temp;
         }
 
-        int aux = copy[city_one];
-        copy[city_one] = copy[city_two];
-        copy[city_two] = aux; 
-
-        float valueR = (float)path_length(copy);
-        float valueS = (float)path_length(auxiliary);;
-        float exponent = (valueS - valueR) / t;
-        float equation = pow(e, exponent);
-        float random_value = rand() % 2;
-
-        if ((valueR < valueS) || (random_value < equation)) {
-            memcpy(auxiliary, copy,  size * sizeof(int));
-        }
-        else {
-            memcpy(copy, auxiliary,   size * sizeof(int)); 
-        }
-        if (path_length(auxiliary) < path_length(tour)) {
-            memcpy(tour, auxiliary,  size * sizeof(int));
-        }
+        // Cool the temperature
+        temperature *= cooling_rate;
     }
-	printf("\n\nTAMANHO TOTAL = %d\n", path_length(tour));
+
+    // Copy the best tour found into the original tour
+    memcpy(tour, best_tour, (size + 1) * sizeof(int));
+
+    // Free allocated memory
+    free(current_tour);
+    free(best_tour);
 }
 
 
