@@ -22,7 +22,7 @@ int main(const int argc, const char **inputFile)
 	// }else{
 	//     readFile(inputFile[1]);
 	// }
-	readFile("eil51.tsp"); // passa direto o nome do arquivo, ao inves de usar linha de comando
+	readFile("tsp/eil51.tsp"); // passa direto o nome do arquivo, ao inves de usar linha de comando
 
 	//    Mostra a distanceMatrix
 	for (int i = 0; i < size; i++)
@@ -51,16 +51,6 @@ int main(const int argc, const char **inputFile)
 
 	simulatedAnnealing(tour);
 	printf("Melhor caminho encontrado: %d\n", calculateTourDistance(tour));
-}
-
-void tweak(int *tour, int i, int j)
-{
-	// Implementar
-	// Gerar dois numeros aleatorios entre 0 e o numero de cidades, garantir que esses dois numeros sejam diferentes, eles serao indices digamos x e y
-	// Trocar os valores que estao na posicao x e y do vetor tour
-	int temp = tour[i];
-	tour[i] = tour[j];
-	tour[j] = temp;
 }
 
 int calculateTourDistance(int *tour)
@@ -175,54 +165,44 @@ void simulatedAnnealing(int *tour) {
     memcpy(current_tour, tour, (size + 1) * sizeof(int));
     memcpy(best_tour, tour, (size + 1) * sizeof(int));
 
-    float temperature = 100000;  // Initial temperature
-    float cooling_rate = 0.9999;  // Cooling rate
+    float initial_temperature = 10000.0; 
+    float temperature = initial_temperature;
+    float cooling_rate = 0.99999; 
 
     while (temperature > 1.0) {
         int city1 = rand() % size + 1;
         int city2 = rand() % size + 1;
 
-        if (city1 == city2) {
-            continue;  // Skip if the cities are the same
-        }
+        if (city1 == city2)
+            continue;  
 
-        // Swap the cities in the tour
         int temp = current_tour[city1];
         current_tour[city1] = current_tour[city2];
         current_tour[city2] = temp;
 
-        int current_distance = path_length(current_tour);
-        int best_distance = path_length(best_tour);
+        int current_distance = calculateTourDistance(current_tour);
+        int best_distance = calculateTourDistance(best_tour);
 
-        // Calculate the change in distance
         int delta_distance = current_distance - best_distance;
 
-        // If the new tour is better or with a probability, accept it
         if (delta_distance < 0 || (rand() / (float)RAND_MAX) < exp(-delta_distance / temperature)) {
             memcpy(best_tour, current_tour, (size + 1) * sizeof(int));
         } else {
-            // Revert the swap
             temp = current_tour[city1];
             current_tour[city1] = current_tour[city2];
             current_tour[city2] = temp;
         }
 
-        // Cool the temperature
-        temperature *= cooling_rate;
+        temperature = temperature * cooling_rate;
+
+        if (temperature < 1000.0)
+            cooling_rate = 0.999995;
     }
 
-    // Copy the best tour found into the original tour
+   
     memcpy(tour, best_tour, (size + 1) * sizeof(int));
 
-    // Free allocated memory
-    free(current_tour);
-    free(best_tour);
 }
-
-
-
-
-
 
 void readFile(const char *inputFile)
 { // le o arquivo que foi passado como parametro e armazena os valores em distanceMatrix
