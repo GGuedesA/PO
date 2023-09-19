@@ -22,7 +22,7 @@ int main(const int argc, const char **inputFile)
 	// }else{
 	//     readFile(inputFile[1]);
 	// }
-	readFile("/home/felix/Documents/GitHub/PO/tsp/eil51.tsp"); // passa direto o nome do arquivo, ao inves de usar linha de comando
+	readFile("eil51.tsp"); // passa direto o nome do arquivo, ao inves de usar linha de comando
 
 	//    Mostra a distanceMatrix
 	for (int i = 0; i < size; i++)
@@ -38,8 +38,7 @@ int main(const int argc, const char **inputFile)
 		tour[i] = i;
 	printf("Tamanho %d\n", calculateTourDistance(tour));
 
-	printf("Tamanho antes da busca gulosa: %d\n", calculateTourDistance(tour));
-
+    
 	// Busca gulosa
 	// Fazer uma busca gulosa partindo da cidade 0, depois da 1, depois da 2 ...
 	// Salvar melhor resultado encontrado nessa etapa
@@ -49,6 +48,7 @@ int main(const int argc, const char **inputFile)
 	// 	Simulated Annealing
 	// Usar a melhor solução encontrada no estagio anterior como solucao inicial do Simulated Annealing
 	// Implementar o Simulated annealing, com atencao ao detalhe de que aqui estamos tentando minimizar a distancia total, no algoritmo mostrado, estamos tentando maximizar a qualidade
+
 	simulatedAnnealing(tour);
 	printf("Melhor caminho encontrado: %d\n", calculateTourDistance(tour));
 }
@@ -136,94 +136,41 @@ void greedySearch(int *tour)
     free(inserted);
 }
 
-void teste(int n, int *caminho){
+void teste(int n, int *tour){
     printf("\nSolucao gerada -> ");
     for(int i=0; i<n; i++){
-        printf("%2d ", caminho[i]); //impressao do caminho
+        printf("%2d ", tour[i]); //impressao do caminho
     }
     printf("\n");
 }
 
-void simulatedAnnealingg(int *tour)
-{
-	// Temperatura inicial.
-	int temperature = 10;
 
-	// Taxa de resfriamento.
-	double coolingRate = 0.9;
-
-	// Melhor solução encontrada até o momento.
-	int bestDistance = INT_MAX;
-
-	// Loop principal do algoritmo.
-	while (temperature > 0)
-	{
-		// Gera uma vizinhança.
-		tweak(tour, rand() % size, rand() % size);
-
-		// Calcula a diferença de energia.
-		int deltaEnergy = calculateTourDistance(tour) - calculateTourDistance(tour);
-
-		// Aceita a mudança com probabilidade.
-		if (deltaEnergy < 0)
-		{
-			// A mudança é melhor, então sempre aceitamos.
-		}
-		else
-		{
-			// A mudança é pior, então aceitamos com probabilidade de e^(-deltaEnergy/temperature).
-			double probability = exp(-deltaEnergy / temperature);
-			if (rand() % 1000 < probability * 1000)
-			{
-				// Aceitamos a mudança.
-			}
-			else
-			{
-				// Rejeitamos a mudança e restauramos o estado anterior.
-				memcpy(tour, tour, size * sizeof(int));
-			}
-		}
-
-		// Diminuir a temperatura.
-		temperature *= coolingRate;
-
-		// Atualizar a melhor solução encontrada
-		int distance = calculateTourDistance(tour);
-		if (distance < bestDistance)
-		{
-			bestDistance = distance;
-			memcpy(tour, tour, size * sizeof(int));
-		}
-	}
-
-	// Imprimir a melhor solução encontrada
-	printf("Melhor solucao encontrada pelo algoritmo simulated annealing: %d\n", bestDistance);
-}
-int path_length(int *caminho){
+int path_length(int *tour){
     int length = 0;
     for(int i=0 ; i<size ; i++){
-        length += distanceMatrix[caminho[i]][caminho[i+1]];
+        length += distanceMatrix[tour[i]][tour[i+1]];
     }
 
     return length;
 }
 
-int tamanho_do_caminho(int *caminho){
+int tamanho_do_caminho(int *tour){
     int tamanho = 0;
     for(int i=0 ; i<size ; i++){
-        tamanho += distanceMatrix[caminho[i]][caminho[i+1]]; //somando valores de distancia de cada cidade contando com o retorno para a cidade inicial
+        tamanho += distanceMatrix[tour[i]][tour[i+1]]; //somando valores de distancia de cada cidade contando com o retorno para a cidade inicial
     }
 
     return tamanho;
 }
-void copia_caminho(int *caminho, int *copia){ //copiando o caminho para outro espaco alocado, auxilio para outros metodos
+void copia_caminho(int *tour, int *copia){ //copiando o caminho para outro espaco alocado, auxilio para outros metodos
     for(int i=0 ; i<size+1 ; i++){
-        copia[i] = caminho[i];
+        copia[i] = tour[i];
     }
 }
 
 void simulatedAnnealing(int *tour) {
-	int *copy = (int*)malloc((size+1)* sizeof(int));
+    
+    int *copy = (int*)malloc((size+1)* sizeof(int));
 	int *auxiliary = (int*)malloc((size+1)* sizeof(int));
 
     float e = 2.7182; 
